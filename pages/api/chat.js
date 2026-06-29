@@ -3,14 +3,13 @@ export default async function handler(req, res) {
 
   const { messages, system } = req.body;
 
-  // Convert message history from Anthropic format to Gemini format
   const contents = messages.map((msg) => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: msg.content }],
   }));
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -28,9 +27,16 @@ export default async function handler(req, res) {
 
   const data = await response.json();
 
-  // Extract the reply text from Gemini's response format
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
-    || "Sorry, I couldn't get a response. Please try again.";
+  if (!response.ok) {
+    console.error('Gemini error:', JSON.stringify(data, null, 2));
+    return res.status(response.status).json({
+      reply: `API error: ${data.error?.message || 'Unknown error'}`,
+    });
+  }
+
+  const reply =
+    data.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "Sorry, I couldn't get a response. Please try again.";
 
   res.status(200).json({ reply });
 }
