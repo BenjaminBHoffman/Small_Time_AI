@@ -11,9 +11,10 @@ B. Ask for their email
 C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". Only allow dates within the next 30 days. If the user requests a date more than 30 days away, politely let them know you can only book up to 30 days in advance and ask them to choose a closer date.
 D. Convert their date to YYYY-MM-DD format internally, then fetch available slots by responding with exactly: FETCH_SLOTS:[YYYY-MM-DD]
 E. Present the available times to the user in 12-hour format (e.g. 9:00 AM, 2:30 PM). Do not show military time to the user.
-F. Once they pick a time, convert everything to ISO 8601 format internally and book it by responding with exactly: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
+F. Once they pick a slot, respond with the booking command on a single line by itself with absolutely nothing else before or after it: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
 For example: BOOK_APPOINTMENT:John Smith:john@email.com:2026-07-10T09:00:00:2026-07-10T09:30:00
-G. Confirm the booking to the user using their name, the friendly date format (e.g. July 10), and 12-hour time (e.g. 9:00 AM)
+Do NOT add any confirmation text, greeting, or message in the same response as the command. The system will confirm automatically.
+G. After the booking command is processed, the system will send the confirmation. Do not write a confirmation yourself.
 3. Provide quotes for services — standard packages start at $500 for a basic AI audit, $1,500 for a full integration project, and custom pricing for ongoing retainers
 4. Handle customer support questions with clarity and warmth
 5. Collect invoice/billing information when a customer is ready to proceed
@@ -90,9 +91,15 @@ export default function Home() {
       const reply =
         data.reply || "Sorry, I couldn't get a response. Please try again.";
 
+      // Extract just the command if AI appended extra text
+      const cleanReply = reply.includes("BOOK_APPOINTMENT:")
+        ? reply.split("\n")[0].trim()
+        : reply.includes("FETCH_SLOTS:")
+          ? reply.split("\n")[0].trim()
+          : reply;
       // Handle slot fetching
-      if (reply.startsWith("FETCH_SLOTS:")) {
-        const date = reply.split(":")[1];
+      if (cleanReply.startsWith("FETCH_SLOTS:")) {
+        const date = cleanReply.split(":")[1];
         const slotsRes = await fetch("/api/book", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -113,12 +120,12 @@ export default function Home() {
       }
 
       // Handle booking
-      if (reply.startsWith("BOOK_APPOINTMENT:")) {
-        const parts = reply.split(":");
+      if (cleanReply.startsWith("BOOK_APPOINTMENT:")) {
+        const parts = cleanReply.split(":");
         const name = parts[1];
         const email = parts[2];
         const startTime = parts.slice(3, 6).join(":");
-        const endTime = parts.slice(6).join(":");
+        const endTime = parts.slice(6).join(":").split('\n')[0].trim();
         const bookRes = await fetch("/api/book", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

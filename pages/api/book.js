@@ -1,4 +1,4 @@
-import { getAvailableSlots, bookAppointment, isSlotAvailable } from '../../lib/calendar';
+import { getAvailableSlots, bookAppointment, isSlotAvailable, formatSlotsFor12Hour } from '../../lib/calendar';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -13,8 +13,9 @@ export default async function handler(req, res) {
     if (action === 'getSlots') {
       console.log('Fetching slots for date:', date);
       const slots = await getAvailableSlots(date);
-      console.log('Slots returned:', slots);
-      return res.status(200).json({ slots });
+      const slots12hr = formatSlotsFor12Hour(slots);
+      console.log('Slots returned:', slots12hr);
+      return res.status(200).json({ slots: slots12hr });
     }
 
     if (action === 'book') {
@@ -26,6 +27,7 @@ export default async function handler(req, res) {
 
       const formatTime = (time) => {
         if (!time) return null;
+        // If missing seconds, add them
         if (time.match(/T\d{2}:\d{2}$/)) return `${time}:00`;
         return time;
       };
@@ -39,7 +41,7 @@ export default async function handler(req, res) {
       if (!formattedStart || !formattedEnd) {
         return res.status(200).json({
           success: false,
-          message: 'I had trouble reading that time slot. Could you confirm the time you wanted?'
+          message: 'I had trouble reading that time slot. Could you confirm the time you wanted?',
         });
       }
 
@@ -51,7 +53,7 @@ export default async function handler(req, res) {
         console.log('  end valid:', isoRegex.test(formattedEnd));
         return res.status(200).json({
           success: false,
-          message: `I had trouble formatting that time. Could you confirm the time you wanted?`
+          message: 'I had trouble formatting that time. Could you confirm the time you wanted?',
         });
       }
 
@@ -69,10 +71,29 @@ export default async function handler(req, res) {
       const event = await bookAppointment(name, email, formattedStart, formattedEnd);
       console.log('Event created:', event.id);
 
+      // Get Google Meet link if available
+      const meetLink = event.conferenceData?.entryPoints?.find(
+        (ep) => ep.entryPointType === 'video'
+      )?.uri || null;
+
+      const friendlyTime = new Date(formattedStart).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      const confirmMessage = meetLink
+        ? `Your discovery call is confirmed for ${friendlyTime}. A calendar invite with the Google Meet link has been sent to ${email}. You can also join here: ${meetLink}`
+        : `Your discovery call is confirmed for ${friendlyTime}. A calendar invite has been sent to ${email}.`;
+
       return res.status(200).json({
         success: true,
         eventId: event.id,
-        message: `Your discovery call is confirmed! You are booked for ${new Date(formattedStart).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}. A calendar invite is on its way to ${email}!`,
+        meetLink,
+        message: confirmMessage,
       });
     }
 
