@@ -5,13 +5,20 @@ const SYSTEM_PROMPT = `You are the AI assistant for Small Time AI, an AI consult
 
 Your role is to:
 1. Answer questions about Small Time AI's services (AI consulting, AI tool integration, workflow automation, chatbot setup, staff training)
-2. Help visitors schedule a discovery call or consultation (collect their name, email, preferred date/time, and a brief description of their needs)
+2. When a user wants to schedule a call:
+A. Ask for their name
+B. Ask for their email
+C. Ask what date they prefer (format: YYYY-MM-DD)
+D. Call the booking system to fetch available slots for that date by responding with exactly: FETCH_SLOTS:[date]
+E. Present the available slots to the user and ask them to pick one
+F. Once they pick a slot, book it by responding with exactly: BOOK_APPOINTMENT:[name]:[email]:[startTime]:[endTime]
+G. Confirm the booking to the user with their name, date, and time
 3. Provide quotes for services — standard packages start at $500 for a basic AI audit, $1,500 for a full integration project, and custom pricing for ongoing retainers
 4. Handle customer support questions with clarity and warmth
 5. Collect invoice/billing information when a customer is ready to proceed
 
-Keep responses concise, friendly, and professional. You represent a small business that is approachable and knowledgeable. When scheduling or quoting, ask for one piece of information at a time. Do not fabricate specific dates or availability — tell users you will confirm within 24 hours. Always end with a helpful next step.
-Always respond in plain conversational text. Do not use markdown formatting, bullet points, numbered lists, or bold text. Write in natural flowing sentences and paragraphs only.`;
+Keep responses concise, friendly, and professional. You represent a small business that is approachable and knowledgeable. When scheduling or quoting, ask for one piece of information at a time. Appointments are confirmed automatically — do not tell users you need to confirm later. Always end with a helpful next step.
+Always respond in plain conversational text. Do not use markdown formatting, bullet points, numbered lists, or bold text. Write in natural flowing sentences and paragraphs only. Exception: when the booking system requires a command like FETCH_SLOTS:[date] or BOOK_APPOINTMENT:[name]:[email]:[startTime]:[endTime], output that command exactly as shown. Do not make up availability. Always fetch real slots before offering times.`;
 
 const QUICK_CHIPS = [
   "Schedule a call",
@@ -82,6 +89,57 @@ export default function Home() {
       const reply =
         data.reply || "Sorry, I couldn't get a response. Please try again.";
 
+      // Handle slot fetching
+      if (reply.startsWith("FETCH_SLOTS:")) {
+        const date = reply.split(":")[1];
+        const slotsRes = await fetch("/api/book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getSlots", date }),
+        });
+        const slotsData = await slotsRes.json();
+        const slotMessage =
+          slotsData.slots.length > 0
+            ? `Here are the available times on ${date}: ${slotsData.slots.join(", ")}. Which works best for you?`
+            : `Sorry, there are no available slots on ${date}. Would you like to try another date?`;
+
+        historyRef.current = [
+          ...historyRef.current,
+          { role: "assistant", content: slotMessage },
+        ];
+        setMessages((prev) => [...prev, { role: "ai", text: slotMessage }]);
+        return;
+      }
+
+      // Handle booking
+      if (reply.startsWith("BOOK_APPOINTMENT:")) {
+        const parts = reply.split(":");
+        const name = parts[1];
+        const email = parts[2];
+        const startTime = parts.slice(3, 6).join(":");
+        const endTime = parts.slice(6).join(":");
+        const bookRes = await fetch("/api/book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "book",
+            name,
+            email,
+            startTime,
+            endTime,
+          }),
+        });
+        const bookData = await bookRes.json();
+        historyRef.current = [
+          ...historyRef.current,
+          { role: "assistant", content: bookData.message },
+        ];
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", text: bookData.message },
+        ]);
+        return;
+      }
       historyRef.current = [
         ...historyRef.current,
         { role: "assistant", content: reply },
