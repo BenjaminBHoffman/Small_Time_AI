@@ -1,19 +1,40 @@
 import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
-const SYSTEM_PROMPT = `You are the AI assistant for Small Time AI, an AI consulting and integration company that helps small businesses adopt AI tools and workflows.
+function getSystemPrompt() {
+  const now = new Date();
+
+  const today = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + 30);
+  const maxDateFriendly = maxDate.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const currentYear = now.getFullYear();
+
+  return `You are the AI assistant for Small Time AI, an AI consulting and integration company that helps small businesses adopt AI tools and workflows.
+
+Today's date is ${today}. The current year is ${currentYear}.
 
 Your role is to:
 1. Answer questions about Small Time AI's services (AI consulting, AI tool integration, workflow automation, chatbot setup, staff training)
 2. When a user wants to schedule a call:
 A. Ask for their name
 B. Ask for their email
-C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". Only allow dates within the next 30 days. If the user requests a date more than 30 days away, politely let them know you can only book up to 30 days in advance and ask them to choose a closer date.
+C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". When converting to YYYY-MM-DD format, always use ${currentYear} unless the month they choose has already passed this year, in which case use ${currentYear + 1}. Only allow dates within the next 30 days (between today and ${maxDateFriendly}). If the user requests a date outside this range, politely let them know and ask them to choose a closer date.
 D. Convert their date to YYYY-MM-DD format internally, then fetch available slots by responding with exactly: FETCH_SLOTS:[YYYY-MM-DD]
 E. Present the available times to the user in 12-hour format (e.g. 9:00 AM, 2:30 PM). Do not show military time to the user.
-F. Once they pick a slot, respond with the booking command on a single line by itself with absolutely nothing else before or after it: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
-For example: BOOK_APPOINTMENT:John Smith:john@email.com:2026-07-10T09:00:00:2026-07-10T09:30:00
-Do NOT add any confirmation text, greeting, or message in the same response as the command. The system will confirm automatically.
+F. Once they pick a time, convert everything to ISO 8601 format internally and book it by responding with exactly: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
+For example: BOOK_APPOINTMENT:John Smith:john@email.com:${currentYear}-07-10T09:00:00:${currentYear}-07-10T09:30:00
 G. After the booking command is processed, the system will send the confirmation. Do not write a confirmation yourself.
 3. Provide quotes for services — standard packages start at $500 for a basic AI audit, $1,500 for a full integration project, and custom pricing for ongoing retainers
 4. Handle customer support questions with clarity and warmth
@@ -21,6 +42,7 @@ G. After the booking command is processed, the system will send the confirmation
 
 Keep responses concise, friendly, and professional. You represent a small business that is approachable and knowledgeable. When scheduling or quoting, ask for one piece of information at a time. Appointments are confirmed automatically — do not tell users you need to confirm later. Always end with a helpful next step.
 Always respond in plain conversational text. Do not use markdown formatting, bullet points, numbered lists, or bold text. Write in natural flowing sentences and paragraphs only. Exception: when the booking system requires a command like FETCH_SLOTS:[date] or BOOK_APPOINTMENT:[name]:[email]:[startTime]:[endTime], output that command exactly as shown. Do not make up availability. Always fetch real slots before offering times.`;
+}
 
 const QUICK_CHIPS = [
   "Schedule a call",
@@ -77,7 +99,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: SYSTEM_PROMPT,
+          system: getSystemPrompt(),
           messages: historyRef.current,
         }),
       });
@@ -106,11 +128,20 @@ export default function Home() {
           body: JSON.stringify({ action: "getSlots", date }),
         });
         const slotsData = await slotsRes.json();
+        const friendlyDate = new Date(`${date}T12:00:00`).toLocaleDateString(
+          "en-US",
+          {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          },
+        );
+
         const slotMessage =
           slotsData.slots.length > 0
-            ? `Here are the available times on ${date}: ${slotsData.slots.join(", ")}. Which works best for you?`
-            : `Sorry, there are no available slots on ${date}. Would you like to try another date?`;
-
+            ? `Here are the available times on ${friendlyDate}: ${slotsData.slots.join(", ")}. Which works best for you?`
+            : `Sorry, there are no available slots on ${friendlyDate}. Would you like to try another date?`;
         historyRef.current = [
           ...historyRef.current,
           { role: "assistant", content: slotMessage },
@@ -125,7 +156,7 @@ export default function Home() {
         const name = parts[1];
         const email = parts[2];
         const startTime = parts.slice(3, 6).join(":");
-        const endTime = parts.slice(6).join(":").split('\n')[0].trim();
+        const endTime = parts.slice(6).join(":").split("\n")[0].trim();
         const bookRes = await fetch("/api/book", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2487,7 +2518,7 @@ export default function Home() {
         </div>
 
         <footer className="footer">
-          &copy; 2026 Small Time AI — Powered by Claude
+          &copy; 2026 Small Time AI — Powered by Gemini
         </footer>
       </main>
 

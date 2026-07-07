@@ -67,6 +67,7 @@ export default async function handler(req, res) {
         });
       }
 
+      console.log('Inserting into calendar:', process.env.GOOGLE_CALENDAR_ID);
       console.log('Calling bookAppointment...');
       const event = await bookAppointment(name, email, formattedStart, formattedEnd);
       console.log('Event created:', event.id);
