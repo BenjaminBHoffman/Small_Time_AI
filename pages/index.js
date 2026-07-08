@@ -30,8 +30,7 @@ Your role is to:
 2. When a user wants to schedule a call:
 A. Ask for their name
 B. Ask for their email
-C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". When converting to YYYY-MM-DD format, always use ${currentYear} unless the month they choose has already passed this year, in which case use ${currentYear + 1}. Only allow dates within the next 30 days (between today and ${maxDateFriendly}). If the user requests a date outside this range, politely let them know and ask them to choose a closer date.
-D. Convert their date to YYYY-MM-DD format internally, then fetch available slots by responding with exactly: FETCH_SLOTS:[YYYY-MM-DD]
+C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". When converting to YYYY-MM-DD format, always use the current year unless the month they choose has already passed this year, in which case use the following year. Only allow dates between tomorrow and 30 days from today. If the user requests today's date or a past date, politely let them know that same-day bookings are not available and ask them to choose a future date.D. Convert their date to YYYY-MM-DD format internally, then fetch available slots by responding with exactly: FETCH_SLOTS:[YYYY-MM-DD]
 E. Present the available times to the user in 12-hour format (e.g. 9:00 AM, 2:30 PM). Do not show military time to the user.
 F. Once they pick a time, convert everything to ISO 8601 format internally and book it by responding with exactly: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
 For example: BOOK_APPOINTMENT:John Smith:john@email.com:${currentYear}-07-10T09:00:00:${currentYear}-07-10T09:30:00
@@ -138,8 +137,9 @@ export default function Home() {
           },
         );
 
-        const slotMessage =
-          slotsData.slots.length > 0
+        const slotMessage = slotsData.blocked
+          ? slotsData.message
+          : slotsData.slots.length > 0
             ? `Here are the available times on ${friendlyDate}: ${slotsData.slots.join(", ")}. Which works best for you?`
             : `Sorry, there are no available slots on ${friendlyDate}. Would you like to try another date?`;
         historyRef.current = [

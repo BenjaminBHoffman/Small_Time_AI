@@ -1,4 +1,10 @@
-import { getAvailableSlots, bookAppointment, isSlotAvailable, formatSlotsFor12Hour, getEasternOffset } from '../../lib/calendar';
+import {
+  getAvailableSlots,
+  bookAppointment,
+  isSlotAvailable,
+  formatSlotsFor12Hour,
+  getEasternOffset,
+} from "../../lib/calendar";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -12,6 +18,21 @@ export default async function handler(req, res) {
   try {
     if (action === "getSlots") {
       console.log("Fetching slots for date:", date);
+
+      // Block same-day and past bookings
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const requestedDate = new Date(`${date}T00:00:00`);
+
+      if (requestedDate <= today) {
+        return res.status(200).json({
+          slots: [],
+          blocked: true,
+          message:
+            "Same-day bookings are not available. Please choose a date starting from tomorrow.",
+        });
+      }
+
       const slots = await getAvailableSlots(date);
       const slots12hr = formatSlotsFor12Hour(slots);
       console.log("Slots returned:", slots12hr);
