@@ -1,47 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
-function getSystemPrompt() {
-  const now = new Date();
-
-  const today = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const maxDate = new Date(now);
-  maxDate.setDate(maxDate.getDate() + 30);
-  const maxDateFriendly = maxDate.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  const currentYear = now.getFullYear();
-
-  return `You are the AI assistant for Small Time AI, an AI consulting and integration company that helps small businesses adopt AI tools and workflows.
-
-Today's date is ${today}. The current year is ${currentYear}.
-
-Your role is to:
-1. Answer questions about Small Time AI's services (AI consulting, AI tool integration, workflow automation, chatbot setup, staff training)
-2. When a user wants to schedule a call:
-A. Ask for their name
-B. Ask for their email
-C. Ask what date they prefer — accept natural formats like "Jun 26" or "July 3". When converting to YYYY-MM-DD format, always use the current year unless the month they choose has already passed this year, in which case use the following year. Only allow dates between tomorrow and 30 days from today. If the user requests today's date or a past date, politely let them know that same-day bookings are not available and ask them to choose a future date.D. Convert their date to YYYY-MM-DD format internally, then fetch available slots by responding with exactly: FETCH_SLOTS:[YYYY-MM-DD]
-E. Present the available times to the user in 12-hour format (e.g. 9:00 AM, 2:30 PM). Do not show military time to the user.
-F. Once they pick a time, convert everything to ISO 8601 format internally and book it by responding with exactly: BOOK_APPOINTMENT:[name]:[email]:[YYYY-MM-DDTHH:MM:00]:[YYYY-MM-DDTHH:MM:00]
-For example: BOOK_APPOINTMENT:John Smith:john@email.com:${currentYear}-07-10T09:00:00:${currentYear}-07-10T09:30:00
-G. After the booking command is processed, the system will send the confirmation. Do not write a confirmation yourself.
-3. Provide quotes for services — standard packages start at $500 for a basic AI audit, $1,500 for a full integration project, and custom pricing for ongoing retainers
-4. Handle customer support questions with clarity and warmth
-5. Collect invoice/billing information when a customer is ready to proceed
-
-Keep responses concise, friendly, and professional. You represent a small business that is approachable and knowledgeable. When scheduling or quoting, ask for one piece of information at a time. Appointments are confirmed automatically — do not tell users you need to confirm later. Always end with a helpful next step.
-Always respond in plain conversational text. Do not use markdown formatting, bullet points, numbered lists, or bold text. Write in natural flowing sentences and paragraphs only. Exception: when the booking system requires a command like FETCH_SLOTS:[date] or BOOK_APPOINTMENT:[name]:[email]:[startTime]:[endTime], output that command exactly as shown. Do not make up availability. Always fetch real slots before offering times.`;
-}
+// The system prompt and booking tools now live in pages/api/chat.js.
 
 const QUICK_CHIPS = [
   "Schedule a call",
@@ -85,8 +45,7 @@ export default function Home() {
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const userMsg = { role: "user", text: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
     historyRef.current = [
       ...historyRef.current,
       { role: "user", content: trimmed },
@@ -94,102 +53,28 @@ export default function Home() {
     setLoading(true);
 
     try {
+      // The server runs the whole agent loop (checking the calendar, booking,
+      // working around problems) and sends back the finished reply.
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: getSystemPrompt(),
-          messages: historyRef.current,
-        }),
+        body: JSON.stringify({ messages: historyRef.current }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json(); // ← was "response.json()", now "res.json()"
+      const data = await res.json().catch(() => ({}));
       const reply =
         data.reply || "Sorry, I couldn't get a response. Please try again.";
 
-      // Extract just the command if AI appended extra text
-      const cleanReply = reply.includes("BOOK_APPOINTMENT:")
-        ? reply.split("\n")[0].trim()
-        : reply.includes("FETCH_SLOTS:")
-          ? reply.split("\n")[0].trim()
-          : reply;
-      // Handle slot fetching
-      if (cleanReply.startsWith("FETCH_SLOTS:")) {
-        const date = cleanReply.split(":")[1];
-        const slotsRes = await fetch("/api/book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "getSlots", date }),
-        });
-        const slotsData = await slotsRes.json();
-        const friendlyDate = new Date(`${date}T12:00:00`).toLocaleDateString(
-          "en-US",
-          {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          },
-        );
-
-        const slotMessage = slotsData.blocked
-          ? slotsData.message
-          : slotsData.slots.length > 0
-            ? `Here are the available times on ${friendlyDate}: ${slotsData.slots.join(", ")}. Which works best for you?`
-            : `Sorry, there are no available slots on ${friendlyDate}. Would you like to try another date?`;
-        historyRef.current = [
-          ...historyRef.current,
-          { role: "assistant", content: slotMessage },
-        ];
-        setMessages((prev) => [...prev, { role: "ai", text: slotMessage }]);
-        return;
-      }
-
-      // Handle booking
-      if (cleanReply.startsWith("BOOK_APPOINTMENT:")) {
-        const parts = cleanReply.split(":");
-        const name = parts[1];
-        const email = parts[2];
-        const startTime = parts.slice(3, 6).join(":");
-        const endTime = parts.slice(6).join(":").split("\n")[0].trim();
-        const bookRes = await fetch("/api/book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "book",
-            name,
-            email,
-            startTime,
-            endTime,
-          }),
-        });
-        const bookData = await bookRes.json();
-        historyRef.current = [
-          ...historyRef.current,
-          { role: "assistant", content: bookData.message },
-        ];
-        setMessages((prev) => [
-          ...prev,
-          { role: "ai", text: bookData.message },
-        ]);
-        return;
-      }
       historyRef.current = [
         ...historyRef.current,
         { role: "assistant", content: reply },
       ];
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: `Something went wrong: ${err.message}. Please try again.`,
+          text: "I couldn't reach the server. Check your connection and try again.",
         },
       ]);
     } finally {
