@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
+import Link from "next/link";
 
 // The system prompt and booking tools now live in pages/api/chat.js.
 
@@ -2393,6 +2394,12 @@ export default function Home() {
               </svg>
             </button>
           </div>
+          <p className="chat-notice">
+            By sending a message, you agree that it will be processed by
+            Google’s Gemini AI as described in our{" "}
+            <Link href="/privacy">Privacy Policy</Link>. Please don’t share
+            sensitive information.
+          </p>
         </div>
 
         {/* Tagline */}
@@ -2404,6 +2411,8 @@ export default function Home() {
 
         <footer className="footer">
           &copy; 2026 Small Time AI — Powered by Gemini
+          <br />
+          <Link href="/privacy">Privacy Policy</Link>
         </footer>
       </main>
 
@@ -2810,6 +2819,26 @@ export default function Home() {
           color: #ffe066;
           font-style: normal;
           font-weight: 700;
+        }
+
+        .chat-notice {
+          padding: 0 0.9rem 0.75rem;
+          font-size: 0.72rem;
+          line-height: 1.5;
+          color: var(--muted);
+          background: rgba(255, 255, 255, 0.7);
+        }
+
+        .chat-notice a {
+          color: var(--accent);
+          text-decoration: underline;
+        }
+
+        .footer a {
+          display: inline-block;
+          margin-top: 0.35rem;
+          color: rgba(255, 255, 255, 0.85);
+          text-decoration: underline;
         }
 
         .footer {
