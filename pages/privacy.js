@@ -4,7 +4,7 @@ import Link from "next/link";
 
 // Before you publish:
 // 1. Put the email address people should use for privacy questions here.
-const CONTACT_EMAIL = "you@example.com";
+const CONTACT_EMAIL = "hoffmanbb10@example.com";
 // 2. Set this to true if the Google Cloud project behind your Gemini API key has
 //    billing turned on. That makes it a paid service, and Google then doesn't
 //    use chat content to improve its products. Leave it false otherwise.
