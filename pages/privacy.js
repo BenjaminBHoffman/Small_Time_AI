@@ -10,7 +10,7 @@ const CONTACT_EMAIL = "hoffmanbb10@example.com";
 //    use chat content to improve its products. Leave it false otherwise.
 const GEMINI_PAID = false;
 
-const EFFECTIVE_DATE = "November 3, 2026";
+const EFFECTIVE_DATE = "November 10, 2026";
 
 export default function PrivacyPolicy() {
   const email = <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>;
@@ -80,9 +80,17 @@ export default function PrivacyPolicy() {
             </li>
             <li>
               <strong>Technical information.</strong> Like most websites, our
-              hosting provider automatically records basic request details, such
-              as your IP address, browser type, and the pages you visit, to run
-              and secure the site.
+              hosting provider, Vercel, automatically records basic request
+              details, such as your IP address, browser type, and the pages you
+              visit, to run and secure the site.
+            </li>
+            <li>
+              <strong>Usage statistics.</strong> We use Vercel Web Analytics to
+              see which pages people visit. For each page view, it records
+              details such as the page, the site that referred you, your
+              browser, operating system, device type, and general location. It
+              doesn’t use cookies, and Vercel stores this data in anonymized
+              form.
             </li>
           </ul>
           <p>
@@ -159,6 +167,10 @@ export default function PrivacyPolicy() {
               about your inquiry.
             </li>
             <li>To run, maintain, and secure the website.</li>
+            <li>
+              To understand how people use the site, through anonymized
+              page-view statistics.
+            </li>
           </ul>
           <p>
             We don’t sell or rent your personal information, share it with
@@ -176,7 +188,9 @@ export default function PrivacyPolicy() {
               and Google Meet (booking), and Google Fonts (the fonts on our
               pages).
             </li>
-            <li>Our website hosting provider.</li>
+            <li>
+              Vercel, which hosts the site and provides our page-view analytics.
+            </li>
           </ul>
           <p>
             We may also disclose information if the law requires it, or to
@@ -187,17 +201,20 @@ export default function PrivacyPolicy() {
 
           <h2>Cookies, tracking, and Do Not Track</h2>
           <p>
-            We don’t use cookies, analytics, or advertising trackers, and we
-            don’t track your activity over time or across other websites.
-            Because we don’t do that kind of tracking, our site works the same
-            way whether or not your browser sends a Do Not Track signal.
+            We don’t use cookies or advertising trackers, and we don’t track
+            your activity over time or across other websites. Our page-view
+            analytics from Vercel identify visits with an anonymous value that
+            resets every day, so visits can’t be linked across days or across
+            websites. Because we don’t do that kind of tracking, our site works
+            the same way whether or not your browser sends a Do Not Track
+            signal.
           </p>
           <p>
             Our pages load fonts from Google Fonts, so your browser connects to
             Google’s servers, which receive your IP address and browser details
-            when the fonts load. Apart from that and the chat and booking
-            services described above, no other companies collect information
-            about your visit through our site.
+            when the fonts load. Apart from that, Vercel’s analytics, and the
+            chat and booking services described above, no other companies
+            collect information about your visit through our site.
           </p>
 
           <h2>How long we keep it</h2>
@@ -214,6 +231,11 @@ export default function PrivacyPolicy() {
             <li>
               <strong>Technical logs:</strong> kept by our hosting provider for
               a limited time.
+            </li>
+            <li>
+              <strong>Usage statistics:</strong> kept by Vercel in anonymized
+              form. The daily value used to count visits is discarded after 24
+              hours.
             </li>
           </ul>
 
