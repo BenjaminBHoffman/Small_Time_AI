@@ -8,7 +8,7 @@ const CONTACT_EMAIL = "hoffmanbb10@example.com";
 // 2. Set this to true if the Google Cloud project behind your Gemini API key has
 //    billing turned on. That makes it a paid service, and Google then doesn't
 //    use chat content to improve its products. Leave it false otherwise.
-const GEMINI_PAID = false;
+const GEMINI_PAID = true;
 
 const EFFECTIVE_DATE = "November 10, 2026";
 
